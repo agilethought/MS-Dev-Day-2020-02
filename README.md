@@ -122,9 +122,73 @@ Congratulations! You have created an AKS Cluster.  We will use the ML models to 
         - Resource Group: Leave Blank  
         - Service connection name: `AzureResourceConnection`
     ![Azure Resource Manager Service Connection](./readme_images/azure_resource_manager_service_connection.png)
+1. Create a Build to Provision Azure Resources
+    1. `Azure DevOps Project Sidebar -> Pipelines -> Create Pipeline`
+        - Where is your code?: `Azure Repos Git`
+        - Select your imported repo
+        - Configure your pipeline: `Existing Azure Pipelines YAML file`
+            - Branch: `master`
+            - Path: `/build_pipeline_scripts/iac-create-environment.yml`
+        - Suggested Name: `Provision Azure Environment`
+    1. Run the Build
+        - `Newly Created Build Pipeline -> Run` (This will take a few minutes!)
+    1. Verify Azure Resource Creation
+        - `Azure Portal -> Resource groups -> <baseName>-AML-RG`
+        - Verify that 5 resources have been created:  
+        ![Initial Resource Group Members](./readme_images/initial_resource_group_members.png)
 
-## Challenge One - Create an Azure DevOps Build to Provision Azure Resources
+Congratulations!  You have configured the large majority of the Azure resources necessary for this workshop.
 
-Use the build definition named `iac-create-environment.yml` to create an new Azure DevOps Build.  Run this build to provision Azure resources for the remainder of the workshop.
+## Create the ML Pipeline
 
-Raise your hand when complete.  The first completion will receive a raffle entry!
+1. Create a Blob Container and Load Log Data
+    1. `Azure Portal -> Storage Accounts -> <baseName>amlsa -> Blob Service -> Containers > + Container`
+        - Name: `modeldata`
+        - Public access level: `Private (no anonymous access)`
+    1. Select the newly created `modeldata` container
+        - Download [`log_data.pkl`](https://github.com/agilethought/MS-Dev-Day-2020-02/raw/master/data/log_data.pkl)
+        - Upload (top left)
+            - File: `log_data.pkl` that you just downloaded
+1. Capture Blob Storage Variable Group Entries
+    - `Azure DevOps Project -> Sidebar -> Pipelines -> Library -> Variable Groups -> devopsforai-aml-vg`
+        - Add the following variables:
+
+            | Variable Name | Suggested Value |
+            | ------------- | --------------- |
+            | STORAGE_ACCT_NAME | `<baseName>amlsa` |
+            | STORAGE_ACCT_KEY | `<Azure Portal -> Storage Accounts -> <Your Storage Account> -> Settings -> Access Keys>` |
+            | STORAGE_BLOB_NAME | `modeldata` |
+1. Create an Azure DevOps Pipeline to Create the ML Pipeline
+    1. `Azure DevOps Project Sidebar -> Pipelines -> Pipelines -> New pipeline`
+        - Where is your code?: `Azure Repos Git`
+        - Select your imported repo
+        - Configure your pipeline: `Existing Azure Pipelines YAML file`
+            - Branch: `master`
+            - Path: `/build_pipeline_scripts/model-build.yml`
+        - Suggested Name: `Build ML Pipeline`
+    1. Run the Pipeline
+        - `Newly Created Build Pipeline -> Run` (This will take a few minutes!)
+        - Verify that ML Pipeline was created
+            - `Azure Portal -> Machine Learning -> <Your ML Workspace> -> Pipelines`
+            - You should see a pipeline named `training-pipeline`  
+            ![ML Pipeline Created](./readme_images/ml_pipeline_created.png)
+
+Congratulations!  You have created an Azure ML Pipeline.  We will train the pipeline in the next section.
+
+## Challenge Two - Train the ML Pipeline
+
+Now that we have created the MLOps Pipelines, we need to train them.  Your challenge is to create an Azure DevOps release to execute the `run_train_pipeline.py` script to perform this task.
+
+- When configuring the build artifacts used in the release, set the `Source Alias` to `_model-build`.
+- Execute the following script in the release:
+    ```
+    docker run -v $(System.DefaultWorkingDirectory)/_model-build/mlops-pipelines/python_scripts/:/script \
+    -w=/script -e MODEL_NAME=$MODEL_NAME -e EXPERIMENT_NAME=$EXPERIMENT_NAME \
+    -e TENANT_ID=$TENANT_ID -e SP_APP_ID=$SP_APP_ID -e SP_APP_SECRET=$SP_APP_SECRET \
+    -e SUBSCRIPTION_ID=$SUBSCRIPTION_ID -e RELEASE_RELEASEID=$RELEASE_RELEASEID \
+    -e BUILD_BUILDID=$BUILD_BUILDID -e BASE_NAME=$BASE_NAME \
+    -e STORAGE_ACCT_NAME=$STORAGE_ACCT_NAME -e STORAGE_ACCT_KEY=$STORAGE_ACCT_KEY -e STORAGE_BLOB_NAME=$STORAGE_BLOB_NAME \
+    mcr.microsoft.com/mlops/python:latest python run_train_pipeline.py
+    ```  
+
+Raise your hand when complete. The first completion will receive a raffle entry!
