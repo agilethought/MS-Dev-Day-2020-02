@@ -175,20 +175,51 @@ Congratulations!  You have configured the large majority of the Azure resources 
 
 Congratulations!  You have created an Azure ML Pipeline.  We will train the pipeline in the next section.
 
-## Challenge Two - Train the ML Pipeline
+## Train the ML Pipeline
+1. Create a New Azure DevOps Release
+    1. `Azure DevOps Project Sidebar -> Pipelines -> Releases -> New pipeline`
+        - Start With: `Empty Job`
+            - Stage Name: `Run Train Scripts`
+    1. Update name to `Train ML Pipeline`
+    1. Add an Artifact
+        - Source Type: `Build`
+        - Source: `Build ML Pipeline` (the pipeline created from `model-build.yml`)
+        - Default version: `Latest`
+        - Source Alias: `_model-build`  
+        ![Add Artifact](./readme_images/add_artifact.png)
+    1. Link the Variable Group
+        - `Train ML Pipeline Release -> Variables Tab -> Variable groups`
+        - Link Variable Group: `devopsforai-aml-vg`
+    1. Update to Ubuntu Agent
+        1. Navigate into Tasks for the Release
+        2. Select the "Agent Job"
+        3. Update Agent Specification: `ubuntu-16.04`
+    1. Add Command Line Task
+        1. Click the "+" (Add task to an Agent Job) button in the `Agent Job` item
+        1. Add a `Command line` task
+        1. Select the new `Command Line Script` task and set the following
+            - Display Name: `Run Train Models Script`
+            - Script:
+            ```
+            docker run -v $(System.DefaultWorkingDirectory)/_model-build/mlops-pipelines/python_scripts/:/script \
+            -w=/script -e MODEL_NAME=$MODEL_NAME -e EXPERIMENT_NAME=$EXPERIMENT_NAME \
+            -e TENANT_ID=$TENANT_ID -e SP_APP_ID=$SP_APP_ID -e SP_APP_SECRET=$SP_APP_SECRET \
+            -e SUBSCRIPTION_ID=$SUBSCRIPTION_ID -e RELEASE_RELEASEID=$RELEASE_RELEASEID \
+            -e BUILD_BUILDID=$BUILD_BUILDID -e BASE_NAME=$BASE_NAME \
+            -e STORAGE_ACCT_NAME=$STORAGE_ACCT_NAME -e STORAGE_ACCT_KEY=$STORAGE_ACCT_KEY -e STORAGE_BLOB_NAME=$STORAGE_BLOB_NAME \
+            mcr.microsoft.com/mlops/python:latest python run_train_pipeline.py
+            ```  
+            ![Run Train Models](./readme_images/run_train_models_script.png)
+    1. Run the Release
+        - Verify that models are created (this may take a while!)
+            - `Azure Portal -> Machine Learning -> <baseName>-AML-WS -> Pipelines -> training-pipeline -> Summary -> Last Run Result: Finished`
+            ![Pipeline Finished](./readme_images/pipeline_status_finished.png)
+            - `Azure Portal -> Machine Learning -> <baseName>-AML-WS -> Models`  
+            ![Trained Models](./readme_images/trained_models.png)
+        - Verify that models exist in blob storage
+            - `Azure Portal -> Storage Accounts -> <baseName>amlsa -> Blob Service -> Containers -> modeldata`  
+            ![Trained Model Blobs](./readme_images/trained_models_pkls.png)
 
-Now that we have created the MLOps Pipelines, we need to train them.  Your challenge is to create an Azure DevOps release to execute the `run_train_pipeline.py` script to perform this task.
+Congratulations!  You've trained your models.  We will scale the AKS cluster from the start of the workshop in the next section.
 
-- When configuring the build artifacts used in the release, set the `Source Alias` to `_model-build`.
-- Execute the following script in the release:
-    ```
-    docker run -v $(System.DefaultWorkingDirectory)/_model-build/mlops-pipelines/python_scripts/:/script \
-    -w=/script -e MODEL_NAME=$MODEL_NAME -e EXPERIMENT_NAME=$EXPERIMENT_NAME \
-    -e TENANT_ID=$TENANT_ID -e SP_APP_ID=$SP_APP_ID -e SP_APP_SECRET=$SP_APP_SECRET \
-    -e SUBSCRIPTION_ID=$SUBSCRIPTION_ID -e RELEASE_RELEASEID=$RELEASE_RELEASEID \
-    -e BUILD_BUILDID=$BUILD_BUILDID -e BASE_NAME=$BASE_NAME \
-    -e STORAGE_ACCT_NAME=$STORAGE_ACCT_NAME -e STORAGE_ACCT_KEY=$STORAGE_ACCT_KEY -e STORAGE_BLOB_NAME=$STORAGE_BLOB_NAME \
-    mcr.microsoft.com/mlops/python:latest python run_train_pipeline.py
-    ```  
-
-Raise your hand when complete. The first completion will receive a raffle entry!
+## Back to the Presentation - Machine Learning Solution Walkthrough
