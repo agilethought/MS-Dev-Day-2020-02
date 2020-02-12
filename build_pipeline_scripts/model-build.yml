@@ -1,0 +1,43 @@
+pr: none
+trigger:
+  branches:
+    include:
+    - master
+
+pool: 
+  vmImage: 'ubuntu-latest'
+
+container: mcr.microsoft.com/mlops/python:latest
+
+
+variables:
+- group: devopsforai-aml-vg
+
+
+steps:
+
+- bash: |
+   # Invoke the Python building and publishing a training pipeline with Python on ML Compute
+   python3 $(System.DefaultWorkingDirectory)/python_scripts/build_train_pipeline.py
+  failOnStderr: 'false'
+  env:
+    SP_APP_SECRET: '$(SP_APP_SECRET)'
+  displayName: 'Publish Azure Machine Learning Pipeline. Python on ML'
+  enabled: 'true'
+
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)'
+  inputs:
+    SourceFolder: '$(Build.SourcesDirectory)'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    Contents: |
+      ?(run_train_pipeline.py|*.json)
+      python_scripts/**
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact'
+  inputs:
+    ArtifactName: 'mlops-pipelines'
+    publishLocation: 'container'
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)' 
+    TargetPath: '$(Build.ArtifactStagingDirectory)'  
