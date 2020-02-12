@@ -222,4 +222,29 @@ Congratulations!  You have created an Azure ML Pipeline.  We will train the pipe
 
 Congratulations!  You've trained your models.  We will scale the AKS cluster from the start of the workshop in the next section.
 
-## Back to the Presentation - Machine Learning Solution Walkthrough
+## Proactively Scale the AKS Cluster using Azure ML
+
+1. Capture AKS Variable Group Entries
+    - `Azure DevOps Project -> Sidebar -> Pipelines -> Library -> Variable Groups -> devopsforai-aml-vg`
+        - Add the following variables:
+
+            | Variable Name | Suggested Value |
+            | ------------- | --------------- |
+            | AKS_NAME | `atDevDayCluster` |
+            | AKS_RG | `<baseName>-AML-RG` |
+
+## Challenge Three - Create a Release to Proactively Scale the AKS Cluster
+
+Your challenge is to create and execute an Azure DevOps release to proactively scale your AKS cluster using the following script:
+
+- When configuring the build artifacts used in the release, set the `Source Alias` to `_model-build`.
+- Execute the following script in the release:
+    ```
+    docker run -v $(System.DefaultWorkingDirectory)/_model-build/mlops-pipelines/python_scripts/:/script \
+    -w=/script -e SP_APP_ID=$SP_APP_ID -e SP_APP_SECRET=$SP_APP_SECRET -e TENANT_ID=$TENANT_ID \
+    -e AKS_RG=$AKS_RG -e STORAGE_ACCT_NAME=$STORAGE_ACCT_NAME -e STORAGE_ACCT_KEY=$STORAGE_ACCT_KEY \
+    -e STORAGE_BLOB_NAME=$STORAGE_BLOB_NAME -e CONTANER_NAME=$CONTANER_NAME -e AKS_NAME=$AKS_NAME \
+    markschabacker/at_ml_dev_day:latest python AksResourceController.py
+    ```  
+
+Raise your hand when you can prove that you have scaled your AKS cluster. The first completion will receive a raffle entry!
