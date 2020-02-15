@@ -232,19 +232,29 @@ Congratulations!  You've trained your models.  We will scale the AKS cluster fro
             | ------------- | --------------- |
             | AKS_NAME | `atDevDayCluster` |
             | AKS_RG | `<baseName>-AML-RG` |
+1. Create a new Azure DevOps Release to run the ML Scaler
+    1. `Azure DevOps Project Sidebar -> Pipelines -> Releases -> Train ML Pipeline -> ... in top right -> Clone`
+        - Name: `Run ML Scaler`
+        - Update the `Command Line Script` task to look like the following: 
+            - Display Name: `Run ML Scaler Script`
+            - Script:
+            ```
+            docker run -v $(System.DefaultWorkingDirectory)/_model-build/mlops-pipelines/python_scripts/:/script \
+            -w=/script -e SP_APP_ID=$SP_APP_ID -e SP_APP_SECRET=$SP_APP_SECRET -e TENANT_ID=$TENANT_ID \
+            -e AKS_RG=$AKS_RG -e STORAGE_ACCT_NAME=$STORAGE_ACCT_NAME -e STORAGE_ACCT_KEY=$STORAGE_ACCT_KEY \
+            -e STORAGE_BLOB_NAME=$STORAGE_BLOB_NAME -e CONTANER_NAME=$CONTANER_NAME -e AKS_NAME=$AKS_NAME \
+            markschabacker/at_ml_dev_day:latest python AksResourceController.py
+            ```  
+            ![Run ML Scaler](./readme_images/run_ml_scaler_script.png)
+            - The docker image definition used in the script is available in the `docker/container` folder in this repo.
+1. Save and run the `Run ML Scaler` release
+    - This should take a while (5+ minutes)!
+1. Verify Scaling
+    - Review release logs  
+        ![Release Log](./readme_images/scaler_release_logs.png)
+    - Verify that AKS has been scaled
+        - `Azure Portal -> Kubernetes services -> atDevDayCluster -> Settings -> Node pools -> nodepool1`
+            - `Node count` should be `2`!  
+            ![AKS Scaled](./readme_images/aks_scaled.png)
 
-## Challenge Three - Create a Release to Proactively Scale the AKS Cluster
-
-Your challenge is to create and execute an Azure DevOps release to proactively scale your AKS cluster using the following script:
-
-- When configuring the build artifacts used in the release, set the `Source Alias` to `_model-build`.
-- Execute the following script in the release:
-    ```
-    docker run -v $(System.DefaultWorkingDirectory)/_model-build/mlops-pipelines/python_scripts/:/script \
-    -w=/script -e SP_APP_ID=$SP_APP_ID -e SP_APP_SECRET=$SP_APP_SECRET -e TENANT_ID=$TENANT_ID \
-    -e AKS_RG=$AKS_RG -e STORAGE_ACCT_NAME=$STORAGE_ACCT_NAME -e STORAGE_ACCT_KEY=$STORAGE_ACCT_KEY \
-    -e STORAGE_BLOB_NAME=$STORAGE_BLOB_NAME -e CONTANER_NAME=$CONTANER_NAME -e AKS_NAME=$AKS_NAME \
-    markschabacker/at_ml_dev_day:latest python AksResourceController.py
-    ```  
-
-Raise your hand when you can prove that you have scaled your AKS cluster. The first completion will receive a raffle entry!
+Congratulations!  You've used Machine Learning to proactively scale an Azure Kubernetes Service cluster!
